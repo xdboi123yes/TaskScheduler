@@ -1,15 +1,16 @@
 using Microsoft.EntityFrameworkCore;
-using TaskScheduler.DataAccess.Data; // Bunu ekleyin
+using TaskScheduler.DataAccess.Data;
+using TaskScheduler.DataAccess.Interfaces;
+using TaskScheduler.DataAccess.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
-// --> BAŞLANGIÇ: Bizim ekleyeceğimiz kod
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
-// --> BİTİŞ: Bizim ekleyeceğimiz kod
+
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 builder.Services.AddControllersWithViews();
 
@@ -32,5 +33,22 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var unitOfWork = services.GetRequiredService<IUnitOfWork>();
+        var initializer = new TaskScheduler.Business.Services.DbInitializer(unitOfWork);
+        await initializer.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        // Hata durumunda loglama yapılabilir.
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred during DB seeding.");
+    }
+}
 
 app.Run();
