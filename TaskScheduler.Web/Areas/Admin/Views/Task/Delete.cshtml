@@ -1,0 +1,24 @@
+@model global::TaskScheduler.Entities.Task
+
+@{
+    ViewData["Title"] = "Görevi Sil";
+}
+
+<h2>@ViewData["Title"]</h2>
+<h3>Bu görevi silmek istediğinizden emin misiniz?</h3>
+<div>
+    <h4>@Model.Name</h4>
+    <hr />
+    <dl class="row">
+        <dt class = "col-sm-3">Görev Adı</dt>
+        <dd class = "col-sm-9">@Model.Name</dd>
+        <dt class = "col-sm-3">Zorluk Seviyesi</dt>
+        <dd class = "col-sm-9">@Model.DifficultyLevel</dd>
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Sil</button>
+        <a asp-action="Index" class="btn btn-secondary">İptal</a>
+    </form>
+</div>

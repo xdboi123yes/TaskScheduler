@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TaskScheduler.Business\TaskScheduler.Business.csproj" />
     <ProjectReference Include="..\TaskScheduler.DataAccess\TaskScheduler.DataAccess.csproj" />
+    <ProjectReference Include="..\TaskScheduler.Entities\TaskScheduler.Entities.csproj" />
   </ItemGroup>
 
   <ItemGroup>

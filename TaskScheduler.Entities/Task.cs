@@ -4,7 +4,7 @@ namespace TaskScheduler.Entities
 {
     public class Task : BaseEntity
     {
-        public string Name { get; set; }
+        public required string Name { get; set; }
 
         [Range(1, 6)]
         public int DifficultyLevel { get; set; }

@@ -1,7 +1,11 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using TaskScheduler.Business.Interfaces;
+using TaskScheduler.Business.Services;
 using TaskScheduler.DataAccess.Data;
 using TaskScheduler.DataAccess.Interfaces;
 using TaskScheduler.DataAccess.Repositories;
+using TaskScheduler.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,8 +15,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IPersonnelService, PersonnelService>();
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+
 
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddAuthentication("MyCookieAuth")
+    .AddCookie("MyCookieAuth", options =>
+    {
+        options.Cookie.Name = "TaskScheduler.AuthCookie";
+        options.LoginPath = "/Account/Login";      // Kullanıcı giriş yapmamışsa bu adrese yönlendir
+        options.AccessDeniedPath = "/Account/AccessDenied"; // Yetkisi yoksa bu adrese yönlendir
+        options.ExpireTimeSpan = TimeSpan.FromDays(30); // Cookie'nin geçerlilik süresi
+    });
 
 var app = builder.Build();
 
@@ -28,11 +45,16 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
+    name: "areas",
+    pattern: "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
+
+app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Account}/{action=Login}/{id?}");
 
 using (var scope = app.Services.CreateScope())
 {

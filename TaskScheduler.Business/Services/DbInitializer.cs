@@ -28,6 +28,7 @@ namespace TaskScheduler.Business.Services
                 var adminUser = new User
                 {
                     Username = "admin",
+                    PasswordHash = "", // Initialize PasswordHash to satisfy the required member constraint
                     Role = UserRole.Admin,
                     IsDeleted = false,
                     CreatedDate = DateTime.UtcNow
