@@ -5,14 +5,14 @@ namespace TaskScheduler.Web.Areas.Admin.Models.ScheduleViewModels
 {
     public class ScheduleIndexViewModel
     {
-        public WeeklySchedule? CurrentSchedule { get; set; }
-        public List<Personnel> PersonnelList { get; set; } = new List<Personnel>();
+        public TaskScheduler.Entities.WeeklySchedule? CurrentSchedule { get; set; }
+        public List<Entities.Personnel> PersonnelList { get; set; } = new List<Entities.Personnel>();
+        
         public Dictionary<int, string> DaysOfWeek { get; set; } = new Dictionary<int, string>
         {
             { 1, "Pazartesi" }, { 2, "Salı" }, { 3, "Çarşamba" }, { 4, "Perşembe" }, { 5, "Cuma" }, { 6, "Cumartesi" }
         };
 
-        // Plan oluşturma formu için
         public ScheduleGenerateViewModel GenerateViewModel { get; set; } = new ScheduleGenerateViewModel();
     }
     

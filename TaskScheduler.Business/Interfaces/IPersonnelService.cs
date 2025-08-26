@@ -10,5 +10,7 @@ namespace TaskScheduler.Business.Interfaces
         System.Threading.Tasks.Task CreatePersonnelAsync(Personnel personnel); // Task olmalı, Task<...> değil
         System.Threading.Tasks.Task UpdatePersonnelAsync(Personnel personnel); // Task olmalı
         System.Threading.Tasks.Task DeletePersonnelAsync(int id);             // Task olmalı
+        System.Threading.Tasks.Task AddUserToPersonnelAsync(int personnelId, User newUser);
+        System.Threading.Tasks.Task RemoveUserFromPersonnelAsync(int personnelId);
     }
 }

@@ -1,0 +1,116 @@
+@using TaskScheduler.Entities
+@model WeeklySchedule
+
+@{
+    ViewData["Title"] = $"Plan Detayları: {Model.ScheduleName}";
+    var personnelList = Model.ScheduledTasks
+        .Where(st => st.Personnel != null) 
+        .Select(st => st.Personnel!)
+        .DistinctBy(p => p.Id)
+        .OrderBy(p => p.FirstName)
+        .ToList();
+    var daysOfWeek = new Dictionary<int, string>
+    {
+        { 1, "Pazartesi" }, { 2, "Salı" }, { 3, "Çarşamba" }, { 4, "Perşembe" }, { 5, "Cuma" }, { 6, "Cumartesi" }
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <div>
+        <h2>@Model.ScheduleName</h2>
+        <h5 class="text-muted fw-normal">@Model.WeekStartDate.ToString("dd MMMM yyyy") Haftası</h5>
+    </div>
+    
+    <!-- BUTON GRUBU -->
+    <div class="btn-toolbar">
+        <!-- YENİ PDF BUTONU -->
+        <div class="btn-group me-2">
+             <a asp-action="DownloadPdf" asp-route-scheduleId="@Model.Id" class="btn btn-danger">
+                <i class="bi bi-file-earmark-pdf-fill"></i> PDF Olarak İndir
+            </a>
+        </div>
+        <div class="btn-group">
+            <a asp-action="Index" class="btn btn-secondary">
+                <i class="bi bi-arrow-left-circle"></i> Tüm Planlara Geri Dön
+            </a>
+        </div>
+    </div>
+</div>
+
+@if (Model.Status == ScheduleStatus.Draft)
+{
+    <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>Bu plan şu anda bir taslaktır. Aktif hale getirmek için onaylayabilirsiniz.</span>
+        <div>
+            <!-- YENİ BUTON -->
+            <form asp-action="Reshuffle" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Mevcut görev dağılımı silinecek ve aynı günler için yeni bir dağılım oluşturulacaktır. Emin misiniz?');">
+                <button type="submit" class="btn btn-info">
+                    <i class="bi bi-shuffle"></i> Yeniden Karıştır
+                </button>
+            </form>
+
+            <form asp-action="Approve" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Bu taslağı onaylayıp aktif plan yapmak istediğinizden emin misiniz? Varsa aynı haftanın diğer aktif planı arşivlenecektir.');">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle-fill"></i> Onayla
+                </button>
+            </form>
+            <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-inline" onsubmit="return confirm('Bu taslağı kalıcı olarak silmek istediğinizden emin misiniz?');">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash-fill"></i> Sil
+                </button>
+            </form>
+        </div>
+    </div>
+}
+
+<h4>Görev Dağılımı</h4>
+<div class="table-responsive">
+    <table class="table table-bordered text-center align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 15%;">Personel</th>
+                @foreach (var day in daysOfWeek)
+                {
+                    // Sadece bu planda görev olan günleri başlıkta göster
+                    if (Model.ScheduledTasks.Any(st => st.DayOfWeek == day.Key))
+                    {
+                        <th style="width: 14%;">@day.Value</th>
+                    }
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var personnel in personnelList)
+            {
+                <tr>
+                    <td class="fw-bold">@personnel.FirstName @personnel.LastName</td>
+                    @foreach (var day in daysOfWeek)
+                    {
+                        // Sadece bu planda görev olan günleri hücre olarak göster
+                        if (Model.ScheduledTasks.Any(st => st.DayOfWeek == day.Key))
+                        {
+                            var taskForDay = Model.ScheduledTasks
+                                .FirstOrDefault(st => st.PersonnelId == personnel.Id && st.DayOfWeek == day.Key);
+
+                            <td>
+                                @if (taskForDay != null && taskForDay.Task != null)
+                                {
+                                    <div class="card bg-light shadow-sm h-100 border-0">
+                                        <div class="card-body p-2">
+                                            <div class="small fw-bold mb-1">@taskForDay.Task.Name</div>
+                                            <span class="badge bg-secondary">Zorluk: @taskForDay.Task.DifficultyLevel</span>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

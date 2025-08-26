@@ -4,10 +4,21 @@
     ViewData["Title"] = "Personel Düzenle";
 }
 
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
 <h2>@ViewData["Title"]</h2>
 <hr />
 <div class="row">
+    <!-- Personel Bilgileri Formu -->
     <div class="col-md-6">
+        <h4>Personel Bilgileri</h4>
         <form asp-action="Edit">
             <input type="hidden" asp-for="Id" />
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
@@ -33,9 +44,46 @@
             </div>
             
             <div class="form-group">
-                <button type="submit" class="btn btn-primary">Güncelle</button>
-                <a asp-action="Index" class="btn btn-secondary">Geri Dön</a>
+                <button type="submit" class="btn btn-primary">Bilgileri Güncelle</button>
+                <a asp-action="Index" class="btn btn-secondary">Listeye Geri Dön</a>
             </div>
         </form>
+    </div>
+
+    <!-- Kullanıcı Hesabı Yönetimi -->
+    <div class="col-md-6">
+        <h4>Kullanıcı Hesabı Yönetimi</h4>
+        
+        @if (Model.HasUserAccount)
+        {
+            <div class="card bg-light">
+                <div class="card-body">
+                    <p>Bu personelin <strong>@Model.CurrentUsername</strong> kullanıcı adıyla bir hesabı bulunmaktadır.</p>
+                    <form asp-action="RemoveUserAccount" asp-route-id="@Model.Id" method="post" 
+                          onsubmit="return confirm('Bu kullanıcı hesabını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.');">
+                        <button type="submit" class="btn btn-danger">Kullanıcı Hesabını Sil</button>
+                    </form>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="card">
+                 <div class="card-body">
+                    <p>Bu personelin bir kullanıcı hesabı bulunmamaktadır. Aşağıdaki formu kullanarak yeni bir hesap oluşturabilirsiniz.</p>
+                    <form asp-action="AddUserAccount" asp-route-id="@Model.Id" method="post">
+                        <div class="mb-3">
+                            <label asp-for="NewUsername" class="form-label"></label>
+                            <input asp-for="NewUsername" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="NewPassword" class="form-label"></label>
+                            <input asp-for="NewPassword" class="form-control" />
+                        </div>
+                        <button type="submit" class="btn btn-success">Kullanıcı Hesabı Oluştur</button>
+                    </form>
+                </div>
+            </div>
+        }
     </div>
 </div>

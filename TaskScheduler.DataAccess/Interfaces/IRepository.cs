@@ -1,8 +1,9 @@
+using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 
 namespace TaskScheduler.DataAccess.Interfaces
 {
-    // T, BaseEntity'den türeyen herhangi bir class olabilir.
     public interface IRepository<T> where T : class
     {
         Task<T?> GetByIdAsync(int id);

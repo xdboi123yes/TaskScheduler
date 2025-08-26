@@ -13,4 +13,11 @@ namespace TaskScheduler.Entities
         Completed = 3,    // Tamamlandı
         Postponed = 4     // Ertelendi
     }
+
+    public enum ScheduleStatus
+{
+    Draft = 1,      // Taslak
+    Active = 2,     // Aktif Plan
+    Archived = 3    // Arşivlenmiş
+}
 }

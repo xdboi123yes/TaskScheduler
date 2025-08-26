@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 using TaskScheduler.Business.Interfaces;
 using TaskScheduler.Business.Services;
 using TaskScheduler.DataAccess.Data;
@@ -19,6 +20,7 @@ builder.Services.AddScoped<IPersonnelService, PersonnelService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IScheduleService, ScheduleService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 
 builder.Services.AddControllersWithViews();
@@ -31,6 +33,8 @@ builder.Services.AddAuthentication("MyCookieAuth")
         options.AccessDeniedPath = "/Account/AccessDenied"; // Yetkisi yoksa bu adrese yönlendir
         options.ExpireTimeSpan = TimeSpan.FromDays(30); // Cookie'nin geçerlilik süresi
     });
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 
@@ -45,6 +49,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseMiddleware<TaskScheduler.Web.Middlewares.AdminCheckMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -62,15 +68,15 @@ using (var scope = app.Services.CreateScope())
     var services = scope.ServiceProvider;
     try
     {
-        var unitOfWork = services.GetRequiredService<IUnitOfWork>();
-        var initializer = new TaskScheduler.Business.Services.DbInitializer(unitOfWork);
-        await initializer.SeedAsync();
+        var dbContext = services.GetRequiredService<TaskScheduler.DataAccess.Data.AppDbContext>();
+        // Veritabanının var olduğundan ve en son migration'a güncel olduğundan emin ol.
+        await dbContext.Database.MigrateAsync(); 
     }
     catch (Exception ex)
     {
-        // Hata durumunda loglama yapılabilir.
+        // Hata durumunda loglama yap.
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred during DB seeding.");
+        logger.LogError(ex, "An error occurred during database migration.");
     }
 }
 

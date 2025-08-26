@@ -1,31 +1,113 @@
 html {
-  font-size: 14px;
+    font-size: 14px;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+    html {
+        font-size: 16px;
+    }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+    position: relative;
+    min-height: 100%;
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
 }
 
-.form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
-  color: var(--bs-secondary-color);
-  text-align: end;
+.form-floating > .form-control-plaintext::placeholder,
+.form-floating > .form-control::placeholder {
+    color: var(--bs-secondary-color);
+    text-align: end;
 }
 
-.form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
-  text-align: start;
+.form-floating > .form-control-plaintext:focus::placeholder,
+.form-floating > .form-control:focus::placeholder {
+    text-align: start;
+}
+
+/* =================================
+   CUSTOM NAVBAR STYLES
+   ================================= */
+
+/* Genel Navbar Ayarları */
+.navbar {
+    transition: all 0.3s ease-in-out;
+}
+
+.navbar .navbar-brand {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Navbar Linkleri */
+.navbar-nav .nav-link {
+    font-weight: 500;
+    position: relative;
+    transition: color 0.3s ease;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+/* Hover Efekti için Alt Çizgi */
+.navbar-nav .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: 5px; /* Çizginin linke olan mesafesi */
+    left: 1rem;
+    right: 1rem;
+    height: 2px;
+    background-color: #fff; /* Alt çizgi rengi */
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.4s ease-out;
+}
+
+/* Linkin üzerine gelindiğinde veya aktif olduğunda */
+.navbar-nav .nav-link:hover,
+.navbar-nav .nav-link.active {
+    color: #fff !important; /* Bootstrap'in varsayılan rengini ezmek için !important */
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link.active::after {
+    transform: scaleX(1);
+}
+
+/* Çıkış Yap Butonu */
+.navbar .btn-logout {
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 20px;
+    padding: 0.3rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.navbar .btn-logout:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: #fff;
+}
+
+/* Mobil Görünüm için Hamburger Menü */
+.navbar-toggler {
+    border: none;
+    padding: 0;
+}
+
+.navbar-toggler:focus {
+    box-shadow: none;
+}
+
+/* Daha şık bir hamburger ikonu (opsiyonel) */
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }

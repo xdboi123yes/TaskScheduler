@@ -18,5 +18,16 @@ namespace TaskScheduler.Web.Areas.Admin.Models.PersonnelViewModels
 
         [Display(Name = "Aktif Mi?")]
         public bool IsActive { get; set; } = true;
+
+        // Kullanıcı hesabı oluşturmak için yeni alanlar
+        [Display(Name = "Kullanıcı Hesabı Oluşturulsun Mu?")]
+        public bool CreateUserAccount { get; set; }
+
+        [Display(Name = "Kullanıcı Adı")]
+        public string? Username { get; set; }
+
+        [DataType(DataType.Password)]
+        [Display(Name = "Şifre")]
+        public string? Password { get; set; }
     }
 }

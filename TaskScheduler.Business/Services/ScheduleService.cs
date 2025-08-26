@@ -6,128 +6,191 @@ using System.Threading.Tasks;
 using TaskScheduler.Business.Interfaces;
 using TaskScheduler.DataAccess.Interfaces;
 using TaskScheduler.Entities;
-using Task = TaskScheduler.Entities.Task;
+// Alias kullanarak System.Threading.Tasks.Task ile çakışmasını önlüyoruz.
+using Task = TaskScheduler.Entities.Task; 
 
 namespace TaskScheduler.Business.Services
 {
     public class ScheduleService : IScheduleService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly Random _random = new Random();
 
         public ScheduleService(IUnitOfWork unitOfWork)
         {
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<WeeklySchedule?> GetLatestScheduleAsync()
-        {
-            // Veritabanından en son oluşturulan planı getir.
-            // İlişkili verileri de (ScheduledTasks, Personnel, Task) Eager Loading ile çekiyoruz.
-            return await _unitOfWork.WeeklySchedule
-                .GetAll()
-                .OrderByDescending(ws => ws.GeneratedDate)
-                .Include(ws => ws.ScheduledTasks)
-                    .ThenInclude(st => st.Personnel)
-                .Include(ws => ws.ScheduledTasks)
-                    .ThenInclude(st => st.Task)
-                .FirstOrDefaultAsync();
-        }
+        // --- IScheduleService Implementasyonları ---
 
-        public async Task<IEnumerable<WeeklySchedule>> GetWeeklySchedulesWithDetailsAsync()
+        public async Task<WeeklySchedule> GenerateDraftScheduleAsync(List<int> workingDays)
         {
-            return await _unitOfWork.WeeklySchedule
-                .GetAll()
-                .Include(ws => ws.ScheduledTasks)
-                    .ThenInclude(st => st.Task)
-                .Include(ws => ws.ScheduledTasks)
-                    .ThenInclude(st => st.Personnel)
-                .OrderBy(ws => ws.WeekStartDate)
-                .ThenBy(ws => ws.GeneratedDate)
-                .ToListAsync();
-        }
-
-        public async System.Threading.Tasks.Task GenerateWeeklyScheduleAsync(List<int> workingDays)
-        {
-            // 1. Gerekli verileri veritabanından çek.
             var activePersonnel = (await _unitOfWork.Personnel.GetAllAsync()).Where(p => p.IsActive && !p.IsDeleted).ToList();
             var allTasks = (await _unitOfWork.Task.GetAllAsync()).Where(t => !t.IsDeleted).ToList();
 
-            // Yeterli personel veya görev yoksa hata fırlat.
-            if (!activePersonnel.Any() || !allTasks.Any())
-            {
+            if (activePersonnel.Count == 0 || allTasks.Count == 0)
                 throw new InvalidOperationException("Plan oluşturmak için yeterli aktif personel veya görev bulunmuyor.");
-            }
-            
-            // 2. Yeni bir haftalık plan konteyneri oluştur.
+
+            var weekStartDate = GetStartOfWeek(DateTime.Today, DayOfWeek.Monday);
             var newSchedule = new WeeklySchedule
             {
-                // Haftanın başlangıcı olarak geçen Pazartesi'yi bulalım.
-                WeekStartDate = GetStartOfWeek(DateTime.Today, DayOfWeek.Monday)
+                WeekStartDate = weekStartDate,
+                ScheduleName = $"{weekStartDate:yyyy-MM-dd} Taslağı",
+                Status = ScheduleStatus.Draft
             };
-
-            // 3. Algoritma için yardımcı veri yapıları.
-            var random = new Random();
-            // Her personelin bir önceki gün hangi zorlukta görev aldığını tutacak sözlük.
-            var lastDifficultyPerPersonnel = new Dictionary<int, int>();
-            activePersonnel.ForEach(p => lastDifficultyPerPersonnel.Add(p.Id, 0)); // Başlangıçta 0 (yok)
-
-            // 4. DAĞITIM ALGORİTMASI
-            foreach (var day in workingDays.OrderBy(d => d)) // Günleri sırayla işle (Pzt, Salı...)
+            
+            var taskQueues = new Dictionary<int, Queue<Task>>();
+            foreach (var p in activePersonnel)
             {
-                // O gün atanabilecek görevlerin bir kopyasını oluştur (görev havuzu).
-                var availableTasks = new List<Task>(allTasks);
-                // Personel listesini her gün için karıştırarak adil bir dağıtım sağla.
-                var shuffledPersonnel = activePersonnel.OrderBy(p => random.Next()).ToList();
+                var shuffledTasks = allTasks.OrderBy(t => t.DifficultyLevel).ThenBy(t => _random.Next()).ToList();
+                taskQueues[p.Id] = new Queue<Task>(shuffledTasks);
+            }
 
-                foreach (var personnel in shuffledPersonnel)
+            var lastDifficultyPerPersonnel = new Dictionary<int, int>();
+            activePersonnel.ForEach(p => lastDifficultyPerPersonnel[p.Id] = 0);
+
+            foreach (var day in workingDays.OrderBy(d => d))
+            {
+                var personnelForDay = activePersonnel.OrderBy(p => _random.Next()).ToList();
+                var assignedTasksToday = new HashSet<int>();
+
+                foreach (var personnel in personnelForDay)
                 {
                     int lastDifficulty = lastDifficultyPerPersonnel[personnel.Id];
-
-                    // KURAL: Bir önceki günün zorluğuna ardışık olmayan görevleri bul.
-                    var suitableTasks = availableTasks
-                        .Where(t => t.DifficultyLevel != lastDifficulty - 1 && 
-                                    t.DifficultyLevel != lastDifficulty + 1)
-                        .ToList();
+                    var personnelTaskQueue = taskQueues[personnel.Id];
                     
-                    // Eğer kurala uyan görev kalmadıysa, kuralı esnet ve havuzdaki herhangi bir görevi al.
-                    // Bu, görev/personel sayısının az olduğu durumlarda sistemin kilitlenmesini önler.
-                    if (!suitableTasks.Any())
+                    Task? selectedTask = null;
+                    int attempts = 0;
+                    int maxAttempts = personnelTaskQueue.Count;
+
+                    while (attempts < maxAttempts)
                     {
-                        suitableTasks = availableTasks;
+                        var candidateTask = personnelTaskQueue.Dequeue();
+                        attempts++;
+
+                        if (Math.Abs(candidateTask.DifficultyLevel - lastDifficulty) > 1 && !assignedTasksToday.Contains(candidateTask.Id))
+                        {
+                            selectedTask = candidateTask;
+                            // Kullanılmayan görevleri kuyruğun sonuna geri ekle
+                            for (int i = 0; i < attempts - 1; i++)
+                            {
+                                personnelTaskQueue.Enqueue(personnelTaskQueue.Dequeue());
+                            }
+                            break;
+                        }
+                        else
+                        {
+                            personnelTaskQueue.Enqueue(candidateTask);
+                        }
                     }
-                    
-                    // Eğer hala atanacak görev yoksa (örn: personel > görev sayısı), bu personeli atla.
-                    if (!suitableTasks.Any()) continue;
 
-                    // Uygun görevler arasından rastgele birini seç.
-                    var selectedTask = suitableTasks[random.Next(suitableTasks.Count)];
-
-                    // Yeni görev atamasını oluştur.
-                    var scheduledTask = new ScheduledTask
+                    if (selectedTask != null)
                     {
-                        PersonnelId = personnel.Id,
-                        TaskId = selectedTask.Id,
-                        DayOfWeek = day,
-                        WeeklySchedule = newSchedule // Bu atama, bu yeni plana ait.
-                    };
-
-                    // Oluşturulan görevi, ana planın görev listesine ekle.
-                    newSchedule.ScheduledTasks.Add(scheduledTask);
-
-                    // Bu görev artık havuzdan kaldırılmalı ki başka birine atanmasın.
-                    availableTasks.Remove(selectedTask);
-                    
-                    // Personelin son görev zorluğunu güncelle.
-                    lastDifficultyPerPersonnel[personnel.Id] = selectedTask.DifficultyLevel;
+                        var scheduledTask = new ScheduledTask
+                        {
+                            PersonnelId = personnel.Id,
+                            TaskId = selectedTask.Id,
+                            DayOfWeek = day,
+                            // WeeklyScheduleId EF Core tarafından otomatik atanacak
+                        };
+                        newSchedule.ScheduledTasks.Add(scheduledTask);
+                        assignedTasksToday.Add(selectedTask.Id);
+                        lastDifficultyPerPersonnel[personnel.Id] = selectedTask.DifficultyLevel;
+                    }
                 }
             }
 
-            // 5. Oluşturulan tüm planı veritabanına kaydet.
             await _unitOfWork.WeeklySchedule.AddAsync(newSchedule);
             await _unitOfWork.CompleteAsync();
+            return newSchedule;
         }
 
-        // Haftanın başlangıç gününü bulan yardımcı metot.
+        public async Task<WeeklySchedule?> GetActiveScheduleAsync()
+        {
+            return await _unitOfWork.WeeklySchedule.GetAll()
+                .Include(ws => ws.ScheduledTasks)
+                    .ThenInclude(st => st.Task) // Görev detayları için
+                .Include(ws => ws.ScheduledTasks)
+                    .ThenInclude(st => st.Personnel)
+                        .ThenInclude(p => p.User) // <-- EKSİK OLAN KRİTİK SATIR
+                .FirstOrDefaultAsync(ws => ws.Status == ScheduleStatus.Active);
+        }
+
+
+        public async Task<IEnumerable<WeeklySchedule>> GetAllSchedulesAsync()
+        {
+            return await _unitOfWork.WeeklySchedule.GetAll()
+                .OrderByDescending(ws => ws.WeekStartDate)
+                .ThenBy(ws => ws.Status)
+                .ToListAsync();
+        }
+        
+        public async System.Threading.Tasks.Task UpdateTaskStatusAsync(int scheduledTaskId, Entities.TaskStatus newStatus)
+        {
+            var scheduledTask = await _unitOfWork.ScheduledTask.GetByIdAsync(scheduledTaskId);
+            if (scheduledTask != null)
+            {
+                scheduledTask.Status = newStatus;
+                _unitOfWork.ScheduledTask.Update(scheduledTask);
+                await _unitOfWork.CompleteAsync();
+            }
+        }
+        
+        public async System.Threading.Tasks.Task ApproveScheduleAsync(int scheduleId)
+        {
+            var scheduleToApprove = await _unitOfWork.WeeklySchedule.GetByIdAsync(scheduleId);
+            if (scheduleToApprove == null) return;
+
+            var existingActive = await _unitOfWork.WeeklySchedule.GetAll()
+                .FirstOrDefaultAsync(ws => ws.WeekStartDate == scheduleToApprove.WeekStartDate
+                                         && ws.Status == ScheduleStatus.Active
+                                         && ws.Id != scheduleToApprove.Id);
+
+            if (existingActive != null)
+            {
+                existingActive.Status = ScheduleStatus.Archived;
+                _unitOfWork.WeeklySchedule.Update(existingActive);
+            }
+
+            scheduleToApprove.Status = ScheduleStatus.Active;
+            scheduleToApprove.ScheduleName = $"{scheduleToApprove.WeekStartDate:yyyy-MM-dd} Aktif Planı";
+            _unitOfWork.WeeklySchedule.Update(scheduleToApprove);
+            await _unitOfWork.CompleteAsync();
+        }
+        
+        public async System.Threading.Tasks.Task ArchiveScheduleAsync(int scheduleId)
+        {
+            var scheduleToArchive = await _unitOfWork.WeeklySchedule.GetByIdAsync(scheduleId);
+            if (scheduleToArchive != null)
+            {
+                scheduleToArchive.Status = ScheduleStatus.Archived;
+                scheduleToArchive.ScheduleName = $"{scheduleToArchive.WeekStartDate:yyyy-MM-dd} Arşivlenmiş Plan";
+                _unitOfWork.WeeklySchedule.Update(scheduleToArchive);
+                await _unitOfWork.CompleteAsync();
+            }
+        }
+            
+        public async System.Threading.Tasks.Task DeleteScheduleAsync(int scheduleId)
+        {
+            var scheduleToDelete = await _unitOfWork.WeeklySchedule.GetByIdAsync(scheduleId);
+            if (scheduleToDelete != null)
+            {
+                // Artık her statüdeki plan silinebilir.
+                _unitOfWork.WeeklySchedule.Delete(scheduleToDelete);
+                await _unitOfWork.CompleteAsync();
+            }
+        }
+
+        public async Task<WeeklySchedule?> GetScheduleDetailsByIdAsync(int scheduleId)
+        {
+            return await _unitOfWork.WeeklySchedule.GetAll()
+                .Include(ws => ws.ScheduledTasks).ThenInclude(st => st.Personnel)
+                .Include(ws => ws.ScheduledTasks).ThenInclude(st => st.Task)
+                .FirstOrDefaultAsync(ws => ws.Id == scheduleId);
+        }
+
+        // --- Yardımcı Metot ---
+
         private DateTime GetStartOfWeek(DateTime dt, DayOfWeek startOfWeek)
         {
             int diff = (7 + (dt.DayOfWeek - startOfWeek)) % 7;

@@ -1,114 +1,135 @@
-@model ScheduleIndexViewModel
+@using TaskScheduler.Entities
+@model IEnumerable<WeeklySchedule>
 
 @{
-    ViewData["Title"] = "Haftalık Plan";
+    ViewData["Title"] = "Plan Yönetimi";
 }
 
 @if (TempData["SuccessMessage"] != null)
 {
-    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 @if (TempData["ErrorMessage"] != null)
 {
-    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 }
 
 <div class="row">
     <!-- YENİ PLAN OLUŞTURMA FORMU -->
     <div class="col-12 col-lg-3">
-        <h4>Yeni Plan Oluştur</h4>
-        <div class="card">
+        <h4><i class="bi bi-plus-circle-fill"></i> Yeni Taslak Oluştur</h4>
+        <div class="card shadow-sm">
             <div class="card-body">
                 <form asp-action="Generate" method="post">
-                    <p class="card-text">Çalışılacak günleri seçerek yeni bir haftalık görev planı oluşturun.</p>
+                    <p class="card-text small text-muted">Çalışılacak günleri seçerek yeni bir haftalık görev taslağı oluşturun.</p>
+                    
+                    @{
+                        // Controller'dan ViewModel göndermediğimiz için burada bir nesne oluşturuyoruz.
+                        var generateModel = new ScheduleGenerateViewModel(); 
+                    }
+                    
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Monday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Monday">Pazartesi</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Monday" checked>
+                        <label class="form-check-label" asp-for="@generateModel.Monday">Pazartesi</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Tuesday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Tuesday">Salı</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Tuesday" checked>
+                        <label class="form-check-label" asp-for="@generateModel.Tuesday">Salı</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Wednesday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Wednesday">Çarşamba</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Wednesday" checked>
+                        <label class="form-check-label" asp-for="@generateModel.Wednesday">Çarşamba</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Thursday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Thursday">Perşembe</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Thursday" checked>
+                        <label class="form-check-label" asp-for="@generateModel.Thursday">Perşembe</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Friday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Friday">Cuma</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Friday" checked>
+                        <label class="form-check-label" asp-for="@generateModel.Friday">Cuma</label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" asp-for="GenerateViewModel.Saturday">
-                        <label class="form-check-label" asp-for="GenerateViewModel.Saturday">Cumartesi</label>
+                        <input class="form-check-input" type="checkbox" asp-for="@generateModel.Saturday">
+                        <label class="form-check-label" asp-for="@generateModel.Saturday">Cumartesi</label>
                     </div>
                     <div class="d-grid mt-3">
-                        <button type="submit" class="btn btn-primary">Planı Oluştur</button>
+                        <button type="submit" class="btn btn-primary">Taslak Oluştur</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- HAFTALIK PLAN GÖRÜNÜMÜ -->
+    <!-- TÜM PLANLARI LİSTELEME TABLOSU -->
     <div class="col-12 col-lg-9 mt-4 mt-lg-0">
-        <h4>Mevcut Plan
-            @if (Model.CurrentSchedule != null)
-            {
-                <small class="text-muted fs-6">(@Model.CurrentSchedule.WeekStartDate.ToString("dd MMMM yyyy") Haftası)</small>
-            }
-        </h4>
-        @if (Model.CurrentSchedule == null || !Model.CurrentSchedule.ScheduledTasks.Any())
-        {
-            <div class="alert alert-info">Görüntülenecek bir plan bulunmuyor. Lütfen yeni bir plan oluşturun.</div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-bordered text-center">
-                    <thead>
+        <h4><i class="bi bi-calendar-week"></i> Kayıtlı Planlar</h4>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Plan Adı</th>
+                        <th>Hafta Başlangıcı</th>
+                        <th>Durum</th>
+                        <th class="text-end">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
+                    {
                         <tr>
-                            <th style="width: 15%;">Personel</th>
-                            @foreach (var day in Model.DaysOfWeek)
-                            {
-                                <th style="width: 14%;">@day.Value</th>
-                            }
+                            <td colspan="4" class="text-center">Kayıtlı plan bulunmamaktadır.</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var personnel in Model.PersonnelList.OrderBy(p => p.FirstName))
+                    }
+                    else
+                    {
+                        @foreach (var plan in Model)
                         {
                             <tr>
-                                <td>@personnel.FirstName @personnel.LastName</td>
-                                @foreach (var day in Model.DaysOfWeek)
-                                {
-                                    var taskForDay = Model.CurrentSchedule.ScheduledTasks
-                                        .FirstOrDefault(st => st.PersonnelId == personnel.Id && st.DayOfWeek == day.Key);
+                                <td>@plan.ScheduleName</td>
+                                <td>@plan.WeekStartDate.ToString("dd MMMM yyyy")</td>
+                                <td>
+                                    @{
+                                        var statusClass = plan.Status switch {
+                                            ScheduleStatus.Active => "bg-success",
+                                            ScheduleStatus.Draft => "bg-warning text-dark",
+                                            ScheduleStatus.Archived => "bg-secondary",
+                                            _ => "bg-light text-dark"
+                                        };
+                                    }
+                                    <span class="badge @plan.Status.GetBadgeClass()">@plan.Status.ToTurkishString()</span>
+                                </td>
+                                <td class="text-end">
+                                    <a asp-action="Details" asp-route-id="@plan.Id" class="btn btn-sm btn-outline-primary" title="Görüntüle">
+                                        <i class="bi bi-eye"></i> Görüntüle
+                                    </a>
+                                    
+                                    @if (plan.Status == ScheduleStatus.Draft)
+                                    {
+                                        <form asp-action="Approve" asp-route-id="@plan.Id" method="post" class="d-inline" onsubmit="return confirm('Bu taslağı onaylayıp aktif plan yapmak istediğinizden emin misiniz?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Onayla">
+                                                <i class="bi bi-check-circle"></i> Onayla
+                                            </button>
+                                        </form>
+                                    }
 
-                                    <td>
-                                        @if (taskForDay != null)
-                                        {
-                                            <div class="card bg-light shadow-sm h-100">
-                                                <div class="card-body p-2">
-                                                    <h6 class="card-title small mb-1">@taskForDay.Task.Name</h6>
-                                                    <span class="badge bg-secondary">Zorluk: @taskForDay.Task.DifficultyLevel</span>
-                                                </div>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span>-</span>
-                                        }
-                                    </td>
-                                }
+                                    <!-- SİLME FORMU - ARTIK DIŞARIDA VE HER DURUM İÇİN GEÇERLİ -->
+                                    <form asp-action="Delete" asp-route-id="@plan.Id" method="post" class="d-inline" onsubmit="return confirm('Bu planı ve ilgili tüm görev atamalarını kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Sil">
+                                            <i class="bi bi-trash"></i> Sil
+                                        </button>
+                                    </form>
+                                </td>
                             </tr>
                         }
-                    </tbody>
-                </table>
-            </div>
-        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>

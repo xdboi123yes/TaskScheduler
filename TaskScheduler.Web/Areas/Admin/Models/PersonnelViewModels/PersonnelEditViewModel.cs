@@ -20,5 +20,17 @@ namespace TaskScheduler.Web.Areas.Admin.Models.PersonnelViewModels
 
         [Display(Name = "Aktif Mi?")]
         public bool IsActive { get; set; }
+
+        // --- KULLANICI YÖNETİMİ ALANLARI ---
+        public bool HasUserAccount { get; set; }
+        public string? CurrentUsername { get; set; }
+
+        // Yeni kullanıcı oluşturmak için
+        [Display(Name = "Yeni Kullanıcı Adı")]
+        public string? NewUsername { get; set; }
+
+        [Display(Name = "Yeni Şifre")]
+        [DataType(DataType.Password)]
+        public string? NewPassword { get; set; }
     }
 }

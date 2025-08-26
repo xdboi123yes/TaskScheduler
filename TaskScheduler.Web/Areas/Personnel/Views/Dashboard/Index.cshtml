@@ -1,0 +1,98 @@
+@model MyScheduleViewModel
+
+@{
+    ViewData["Title"] = "Haftalık Görevlerim";
+    var todayDayOfWeek = (int)DateTime.Today.DayOfWeek;
+    if (todayDayOfWeek == 0) { todayDayOfWeek = 7; } // Pazar'ı 7 yap
+}
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-list-task"></i> @ViewData["Title"]</h2>
+    <span class="text-muted">@DateTime.Now.ToString("dd MMMM yyyy, dddd")</span>
+</div>
+
+
+@if (Model.TasksByDay == null || !Model.TasksByDay.Any())
+{
+    <div class="alert alert-info text-center">
+        <h4>Bu hafta için size atanmış bir görev bulunmamaktadır.</h4>
+    </div>
+}
+else
+{
+    <!-- Gün Sekmeleri (Tabs) -->
+    <ul class="nav nav-tabs nav-fill" id="myDayTabs" role="tablist">
+        @foreach (var dayGroup in Model.TasksByDay)
+        {
+            var dayName = Model.DaysOfWeek[dayGroup.Key];
+            var isActive = (dayGroup.Key == todayDayOfWeek) ? "active" : "";
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @isActive" id="@(dayName)-tab" data-bs-toggle="tab" data-bs-target="#tab-@dayName" type="button" role="tab">
+                    @dayName
+                </button>
+            </li>
+        }
+    </ul>
+
+    <!-- Sekme İçerikleri -->
+    <div class="tab-content" id="myDayTabsContent">
+        @foreach (var dayGroup in Model.TasksByDay)
+        {
+            var dayName = Model.DaysOfWeek[dayGroup.Key];
+            var isActive = (dayGroup.Key == todayDayOfWeek) ? "show active" : "";
+            <div class="tab-pane fade @isActive" id="tab-@dayName" role="tabpanel">
+                <div class="p-3">
+                    @foreach (var task in dayGroup)
+                    {
+                        // NULL UYARISI İÇİN GÜVENLİK KONTROLÜ
+                        if (task.Task == null) { continue; }
+
+                        <div class="card shadow-sm mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">@task.Task.Name</h5>
+                                <span class="badge bg-dark">Zorluk: @task.Task.DifficultyLevel</span>
+                            </div>
+                            <div class="card-body">
+                                <form asp-action="UpdateStatus" method="post" class="row g-2 align-items-center">
+                                    <input type="hidden" name="scheduledTaskId" value="@task.Id" />
+                                    <div class="col-auto">
+                                        <label class="form-label mb-0"><strong>Durum:</strong></label>
+                                    </div>
+                                    <div class="col">
+                                        @{
+                                            // BELİRSİZLİK GİDERME: asp-items'ı enum'ın tam yolu ile kullanıyoruz.
+                                            // Bu, en sağlam yöntemdir.
+                                            var selectList = Html.GetEnumSelectList<Entities.TaskStatus>();
+                                            foreach (var item in selectList)
+                                            {
+                                                if (item.Value == ((int)task.Status).ToString())
+                                                {
+                                                    item.Selected = true;
+                                                }
+                                                // Metinleri Türkçeleştir
+                                                item.Text = ((Entities.TaskStatus)int.Parse(item.Value)).ToTurkishString();
+                                            }
+                                        }
+                                        <select name="newStatus" class="form-select" asp-items="selectList"
+                                                onchange="this.closest('form').querySelector('button').classList.remove('btn-outline-primary'); this.closest('form').querySelector('button').classList.add('btn-primary');">
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="submit" class="btn btn-outline-primary">
+                                            <i class="bi bi-check2-circle"></i> Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}

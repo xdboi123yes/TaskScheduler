@@ -31,6 +31,11 @@ namespace TaskScheduler.DataAccess.Repositories
             return await _dbSet.ToListAsync();
         }
 
+        public IQueryable<T> GetAll()
+        {
+            return _dbSet.AsQueryable();
+        }
+
         public async Task<T?> GetByIdAsync(int id)
         {
             return await _dbSet.FindAsync(id);
@@ -39,11 +44,6 @@ namespace TaskScheduler.DataAccess.Repositories
         public void Update(T entity)
         {
             _dbSet.Update(entity);
-        }
-
-        public IQueryable<T> GetAll()
-        {
-            return _dbSet;
         }
     }
 }

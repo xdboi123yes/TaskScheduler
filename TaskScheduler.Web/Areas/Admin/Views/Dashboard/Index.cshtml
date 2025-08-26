@@ -1,8 +1,118 @@
+@using TaskScheduler.Entities
+@using TaskScheduler.Web.Areas.Admin.Models.DashboardViewModels
+@using TaskScheduler.Web.Extensions
+@model DashboardViewModel
+
 @{
-    ViewData["Title"] = "Admin Anasayfa";
+    ViewData["Title"] = "Genel Bakış";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Admin Paneline Hoş Geldiniz</h1>
-    <p>Sol üst menüden personel ve görev yönetimi yapabilirsiniz.</p>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-grid-1x2-fill"></i> @ViewData["Title"]</h1>
 </div>
+
+<!-- Hızlı Erişim Kartları -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Personel Yönetimi</h5>
+                        <h2 class="display-6">@Model.TotalPersonnelCount</h2>
+                    </div>
+                    <i class="bi bi-people-fill" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+                <a asp-area="Admin" asp-controller="Personnel" asp-action="Index" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Tanımlı Görevler</h5>
+                        <h2 class="display-6">@Model.TotalTaskCount</h2>
+                    </div>
+                    <i class="bi bi-list-task" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+                <a asp-area="Admin" asp-controller="Task" asp-action="Index" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-secondary shadow-sm h-100">
+            <div class="card-body">
+                 <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="card-title">Plan Yönetimi</h5>
+                        <p class="card-text">Yeni planlar oluşturun ve mevcut planları yönetin.</p>
+                    </div>
+                    <i class="bi bi-calendar-week" style="font-size: 3rem; opacity: 0.5;"></i>
+                </div>
+                <a asp-area="Admin" asp-controller="Schedule" asp-action="Index" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Aktif Haftalık Plan -->
+<h4><i class="bi bi-calendar-check"></i> Aktif Haftalık Plan</h4>
+@if (Model.ActiveSchedule == null || !Model.ActiveSchedule.ScheduledTasks.Any())
+{
+    <div class="alert alert-warning">
+        Şu anda aktif bir haftalık plan bulunmuyor. Lütfen <a asp-area="Admin" asp-controller="Schedule" asp-action="Index" class="alert-link">Plan Yönetimi</a> sayfasından bir taslak oluşturup onaylayın.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-bordered text-center align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 15%;">Personel</th>
+                    @foreach (var day in Model.DaysOfWeek)
+                    {
+                        if (Model.ActiveSchedule.ScheduledTasks.Any(st => st.DayOfWeek == day.Key))
+                        {
+                            <th>@day.Value</th>
+                        }
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var personnel in Model.PersonnelList.OrderBy(p => p.FirstName))
+                {
+                    <tr>
+                        <td class="fw-bold">@personnel.FirstName @personnel.LastName</td>
+                        @foreach (var day in Model.DaysOfWeek)
+                        {
+                            if (Model.ActiveSchedule.ScheduledTasks.Any(st => st.DayOfWeek == day.Key))
+                            {
+                                var taskForDay = Model.ActiveSchedule.ScheduledTasks
+                                    .FirstOrDefault(st => st.PersonnelId == personnel.Id && st.DayOfWeek == day.Key);
+                                <td>
+                                    @if (taskForDay != null && taskForDay.Task != null)
+                                    {
+                                        <div class="card shadow-sm h-100 border-0">
+                                            <div class="card-body p-2">
+                                                <div class="small fw-bold mb-1">@taskForDay.Task.Name</div>
+                                                <span class="badge @taskForDay.Status.GetBadgeClass()">@taskForDay.Status.ToTurkishString()</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                            }
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
