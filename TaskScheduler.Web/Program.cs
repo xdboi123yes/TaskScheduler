@@ -18,6 +18,7 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IPersonnelService, PersonnelService>();
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
 
 
 builder.Services.AddControllersWithViews();

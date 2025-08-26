@@ -40,5 +40,10 @@ namespace TaskScheduler.DataAccess.Repositories
         {
             _dbSet.Update(entity);
         }
+
+        public IQueryable<T> GetAll()
+        {
+            return _dbSet;
+        }
     }
 }
