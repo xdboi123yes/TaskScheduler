@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using TaskScheduler.Business.Interfaces;
-using TaskScheduler.Entities;
+using TaskScheduler.Entities; // ScheduleStatus enum'ı için
 using TaskScheduler.Web.Areas.Admin.Models.ScheduleViewModels;
+using X.PagedList.Extensions; // Bu using ifadesi artık çalışacak
 
 namespace TaskScheduler.Web.Areas.Admin.Controllers
 {
@@ -22,10 +24,29 @@ namespace TaskScheduler.Web.Areas.Admin.Controllers
         }
 
         // GET: Admin/Schedule
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchTerm, int page = 1)
         {
-            var allSchedules = await _scheduleService.GetAllSchedulesAsync();
-            return View(allSchedules);
+            int pageSize = 10;
+            var allSchedulesQuery = _scheduleService.GetAllSchedulesAsQueryable();
+
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                allSchedulesQuery = allSchedulesQuery.Where(s => s.ScheduleName != null && s.ScheduleName.Contains(searchTerm));
+            }
+            
+            ViewData["CurrentFilter"] = searchTerm;
+
+            // --- ASENKRON HATASINA KARŞI GÜVENLİ ÇÖZÜM ---
+            
+            // 1. Önce sorguyu asenkron olarak çalıştırıp listeyi belleğe al.
+            var schedulesList = await allSchedulesQuery.ToListAsync(); 
+            
+            // 2. Bellekteki liste üzerinde senkron sayfalama yap.
+            var pagedSchedules = schedulesList.ToPagedList(page, pageSize);
+
+            // --- BİTİŞ ---
+
+            return View(pagedSchedules);
         }
 
         // POST: Admin/Schedule/Generate

@@ -35,7 +35,7 @@
                 </ul>
                 <div class="d-flex align-items-center">
                     <span class="navbar-text me-3 d-none d-lg-block">
-                        Hoş geldin, @User.Identity.Name
+                        Hoş geldin, @(User.Identity?.Name)
                     </span>
                     <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
                          <button type="submit" class="btn btn-sm text-white btn-logout">

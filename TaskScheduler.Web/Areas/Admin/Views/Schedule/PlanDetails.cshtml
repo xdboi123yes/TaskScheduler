@@ -1,4 +1,5 @@
 @using TaskScheduler.Entities
+@using TaskScheduler.Web.Extensions
 @model WeeklySchedule
 
 @{
@@ -99,6 +100,8 @@
                                         <div class="card-body p-2">
                                             <div class="small fw-bold mb-1">@taskForDay.Task.Name</div>
                                             <span class="badge bg-secondary">Zorluk: @taskForDay.Task.DifficultyLevel</span>
+                                            <br>
+                                            <span class="badge @taskForDay.Status.GetBadgeClass()">@taskForDay.Status.ToTurkishString()</span>
                                         </div>
                                     </div>
                                 }

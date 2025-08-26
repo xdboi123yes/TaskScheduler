@@ -15,5 +15,6 @@ namespace TaskScheduler.Business.Interfaces
         System.Threading.Tasks.Task DeleteScheduleAsync(int scheduleId);
         Task<WeeklySchedule?> GetScheduleDetailsByIdAsync(int scheduleId);
         System.Threading.Tasks.Task UpdateTaskStatusAsync(int scheduledTaskId, Entities.TaskStatus newStatus);
+        IQueryable<WeeklySchedule> GetAllSchedulesAsQueryable();
     }
 }

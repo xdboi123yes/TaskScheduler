@@ -112,7 +112,7 @@ namespace TaskScheduler.Business.Services
                     .ThenInclude(st => st.Task) // Görev detayları için
                 .Include(ws => ws.ScheduledTasks)
                     .ThenInclude(st => st.Personnel)
-                        .ThenInclude(p => p.User) // <-- EKSİK OLAN KRİTİK SATIR
+                        .ThenInclude(p => p!.User) // <-- EKSİK OLAN KRİTİK SATIR
                 .FirstOrDefaultAsync(ws => ws.Status == ScheduleStatus.Active);
         }
 
@@ -149,6 +149,7 @@ namespace TaskScheduler.Business.Services
             if (existingActive != null)
             {
                 existingActive.Status = ScheduleStatus.Archived;
+                existingActive.ScheduleName = $"{existingActive.WeekStartDate:yyyy-MM-dd} Arşivlenmiş Plan";
                 _unitOfWork.WeeklySchedule.Update(existingActive);
             }
 
@@ -175,7 +176,6 @@ namespace TaskScheduler.Business.Services
             var scheduleToDelete = await _unitOfWork.WeeklySchedule.GetByIdAsync(scheduleId);
             if (scheduleToDelete != null)
             {
-                // Artık her statüdeki plan silinebilir.
                 _unitOfWork.WeeklySchedule.Delete(scheduleToDelete);
                 await _unitOfWork.CompleteAsync();
             }
@@ -187,6 +187,13 @@ namespace TaskScheduler.Business.Services
                 .Include(ws => ws.ScheduledTasks).ThenInclude(st => st.Personnel)
                 .Include(ws => ws.ScheduledTasks).ThenInclude(st => st.Task)
                 .FirstOrDefaultAsync(ws => ws.Id == scheduleId);
+        }
+
+        public IQueryable<WeeklySchedule> GetAllSchedulesAsQueryable()
+        {
+            return _unitOfWork.WeeklySchedule.GetAll()
+                .OrderByDescending(ws => ws.WeekStartDate)
+                .ThenBy(ws => ws.Status);
         }
 
         // --- Yardımcı Metot ---

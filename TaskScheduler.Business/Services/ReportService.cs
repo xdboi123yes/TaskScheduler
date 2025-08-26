@@ -6,6 +6,8 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using TaskScheduler.Business.Interfaces;
 using TaskScheduler.DataAccess.Interfaces;
+using TaskScheduler.Entities;
+using TaskStatus = TaskScheduler.Entities.TaskStatus;
 
 namespace TaskScheduler.Business.Services
 {
@@ -94,10 +96,22 @@ namespace TaskScheduler.Business.Services
                                 foreach (var day in daysOfWeek)
                                 {
                                     var task = schedule.ScheduledTasks.FirstOrDefault(st => st.PersonnelId == personnel.Id && st.DayOfWeek == day.Key);
-                                    // DÜZELTME: Null-conditional operator ile daha temiz bir kontrol.
-                                    var text = (task?.Task != null) 
-                                    ? $"{task.Task.Name}\n(Z: {task.Task.DifficultyLevel})" 
-                                    : "-";
+                                    
+                                    var text = "-";
+                                    if (task != null && task.Task != null)
+                                    {
+                                        // EnumExtensions'ı burada doğrudan kullanamayız. Manuel yazalım.
+                                        var statusText = task.Status switch
+                                        {
+                                            TaskStatus.Pending => "Bekliyor",
+                                            TaskStatus.InProgress => "Devam",
+                                            TaskStatus.Completed => "Tamamlandı",
+                                            TaskStatus.Postponed => "Ertelendi",
+                                            _ => ""
+                                        };
+                                        text = $"{task.Task.Name}\n(Z: {task.Task.DifficultyLevel}) - {statusText}";
+                                    }
+
                                     table.Cell().Border(1).Padding(2).AlignCenter().Text(text);
                                 }
                             }
